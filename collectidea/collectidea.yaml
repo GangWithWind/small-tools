@@ -1,0 +1,6 @@
+Type: IPython Notebook Extension
+Name: collectidea
+Description: This extension help collect idea
+Icon: icon.png
+Main: main.js
+Compatibility: 4.x
