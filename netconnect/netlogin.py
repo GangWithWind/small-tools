@@ -6,7 +6,7 @@ import smtplib
 import socket
 from email.mime.text import MIMEText
 
-with open('pars.ini', 'r') as fid:
+with open('local.ini', 'r') as fid:
     pars = json.load(fid)
 
 data = {"opr": "pwdLogin",
