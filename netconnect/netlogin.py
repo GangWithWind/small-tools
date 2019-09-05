@@ -1,50 +1,88 @@
+
 import requests
 import time
 import json
+import smtplib
+import socket
+from email.mime.text import MIMEText
 
-#
+with open('pars.ini', 'r') as fid:
+    pars = json.load(fid)
 
 data = {"opr": "pwdLogin",
-"userName": "zhaogang",
-"pwd": "123456",
-"rememberPwd": "1"
-}
+        "userName": pars['net_name'],
+        "pwd": pars["net_pwd"],
+        "rememberPwd": "1",
+        }
 
 login_url = "http://1.1.1.3/ac_portal/login.php"
 check_url = "http://www.baidu.com"
-sleep = 10
+sleep = pars.get('sleep', 10)
+
+
+def send_ip_by_email(ip_address):
+    msg = MIMEText('ip_address change to: {0}'.format(ip_address),
+                   'plain', 'utf-8')
+    sender = pars['email_name']
+    password = pars['email_pwd']
+    smtp_server = pars['email_host']
+    msg['From'] = sender
+    msg['To'] = sender
+    msg['Subject'] = 'ip address'
+    server = smtplib.SMTP(smtp_server, 25)
+    server.login(sender, password)
+    server.sendmail(sender, msg['To'], msg.as_string())
+    server.quit()
+
+
+def get_ip_by_prefix(prefix):
+    localIP = ''
+    for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+        if ip.startswith(prefix):
+            localIP = ip
+    return localIP
 
 
 def check_connection():
     try:
-        q =  requests.get(check_url)
-        if ("1.1.1" not in q.url ): #will redirect to 1.1.1.3 if not connect to internet
+        q = requests.get(check_url)
+        if ("1.1.1" not in q.url):
+            # will redirect to 1.1.1.3 if not connect to internet
             return True
         else:
             return False
     except:
         return False
 
+
 def writelog(info):
-    with open('/home/gzhao/GitHub/mytools/netlogin/netlogin.log', 'a') as fid:
+    with open('netlogin.log', 'a') as fid:
         # TODO: 地址写入ini文件
-        now = time.strftime('%Y-%m-%d %H:%M:%s', time.localtime(time.time()))
-        fid.write('%s\t%s\n'%(now,info))
-        # TODO: 日期的秒数显示太长
+        now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+        fid.write('{0}\t{1}\n'.format(now, info))
+
 
 if __name__ == "__main__":
-    writelog('start')
+    old_ip = ''
+    writelog('start: ip = {0}'.format(old_ip))
+
     while True:
         isconnect = check_connection()
 
         if not isconnect:
             writelog('re-login...')
             r = requests.post(login_url, data = data)
-            rjs = json.loads(r.text.replace("'",'"'))
+            rjs = json.loads(r.text.replace("'", '"'))
             if not rjs['success']:
                 writelog('error')
-                break
-            writelog('done')
+                time.sleep(sleep)
+            else:
+                writelog('done')
+                sleep(2)
+                now_ip = get_ip_by_prefix(pars["ip_prefix"])
+                if now_ip != old_ip:
+                    send_ip_by_email(now_ip)
+                    old_ip = now_ip
         time.sleep(sleep)
 
 # TODO FIXIT
